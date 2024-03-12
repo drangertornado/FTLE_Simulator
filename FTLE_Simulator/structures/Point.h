@@ -46,32 +46,32 @@ struct Point
 {
   Position position;
   NeighbourIndex neighbourIndex;
-  float singularValueForward, singularValueBackward;
   float ftleExponentForward, ftleExponentBackward;
+  glm::vec3 normalVectorForward, normalVectorBackward;
 
   __host__ Point(glm::vec3 pointPosition, NeighbourIndex neighnourIndex)
       : position(Position(pointPosition)),
         neighbourIndex(neighnourIndex),
-        singularValueForward(0.0f),
-        singularValueBackward(0.0f),
         ftleExponentForward(0.0f),
-        ftleExponentBackward(0.0f) {}
+        ftleExponentBackward(0.0f),
+        normalVectorForward(0.0f),
+        normalVectorBackward(0.0f) {}
 
   __host__ Point(glm::vec3 pointPosition)
       : position(Position(pointPosition)),
         neighbourIndex(),
-        singularValueForward(0.0f),
-        singularValueBackward(0.0f),
         ftleExponentForward(0.0f),
-        ftleExponentBackward(0.0f) {}
+        ftleExponentBackward(0.0f),
+        normalVectorForward(0.0f),
+        normalVectorBackward(0.0f) {}
 
   __host__ Point()
       : position(),
         neighbourIndex(),
-        singularValueForward(0.0f),
-        singularValueBackward(0.0f),
         ftleExponentForward(0.0f),
-        ftleExponentBackward(0.0f) {}
+        ftleExponentBackward(0.0f),
+        normalVectorForward(0.0f),
+        normalVectorBackward(0.0f) {}
 };
 
 #endif // POINT_H

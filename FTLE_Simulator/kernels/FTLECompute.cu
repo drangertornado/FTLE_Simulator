@@ -4,6 +4,61 @@
 #include "FTLECompute.cuh"
 #include "glm.hpp"
 
+// Function to compute the normal vector
+__global__ void computeNormalVector(Point *d_points, unsigned int pointsCount)
+{
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < pointsCount)
+    {
+        // Initialize neighbouring point FTLE values
+       float neighbourFtleLeftForward,
+            neighbourFtleLeftBackward,
+            neighbourFtleRightForward,
+            neighbourFtleRightBackward,
+            neighbourFtleUpForward,
+            neighbourFtleUpBackward,
+            neighbourFtleDownForward,
+            neighbourFtleDownBackward,
+            neighbourFtleFrontForward,
+            neighbourFtleFrontBackward,
+            neighbourFtleBackForward,
+            neighbourFtleBackBackward;
+
+        // Determine neighbouring FTLE values from index
+        // Left neighbour FTLE value
+        neighbourFtleLeftForward = d_points[d_points[idx].neighbourIndex.left].ftleExponentForward;
+        neighbourFtleLeftBackward = d_points[d_points[idx].neighbourIndex.left].ftleExponentBackward;
+
+        // Right neighbour FTLE value
+        neighbourFtleRightForward = d_points[d_points[idx].neighbourIndex.right].ftleExponentForward;
+        neighbourFtleRightBackward = d_points[d_points[idx].neighbourIndex.right].ftleExponentBackward;
+
+        // Top neighbour FTLE value
+        neighbourFtleUpForward = d_points[d_points[idx].neighbourIndex.up].ftleExponentForward;
+        neighbourFtleUpBackward = d_points[d_points[idx].neighbourIndex.up].ftleExponentBackward;
+
+        // Bottom neighbour FTLE value
+        neighbourFtleDownForward = d_points[d_points[idx].neighbourIndex.down].ftleExponentForward;
+        neighbourFtleDownBackward = d_points[d_points[idx].neighbourIndex.down].ftleExponentBackward;
+
+        // Front neighbour FTLE value
+        neighbourFtleFrontForward = d_points[d_points[idx].neighbourIndex.front].ftleExponentForward;
+        neighbourFtleFrontBackward = d_points[d_points[idx].neighbourIndex.front].ftleExponentBackward;
+
+        // Back neighbour FTLE value
+        neighbourFtleBackForward = d_points[d_points[idx].neighbourIndex.back].ftleExponentForward;
+        neighbourFtleBackBackward = d_points[d_points[idx].neighbourIndex.back].ftleExponentBackward;
+
+        // Compute the gradient
+        glm::vec3 gradientForward = glm::vec3(neighbourFtleRightForward - neighbourFtleLeftForward, neighbourFtleUpForward - neighbourFtleDownForward, neighbourFtleBackForward - neighbourFtleFrontForward);
+        glm::vec3 gradientBackward = glm::vec3(neighbourFtleRightBackward - neighbourFtleLeftBackward, neighbourFtleUpBackward - neighbourFtleDownBackward, neighbourFtleBackBackward - neighbourFtleFrontBackward);
+
+        // Save the normal vector
+        d_points[idx].normalVectorForward = glm::normalize(gradientForward);
+        d_points[idx].normalVectorBackward = glm::normalize(gradientBackward);
+    }
+}
+
 // Function to compute the FTLE exponent
 __global__ void computeFtleExponent(Point *d_points, unsigned int pointsCount, float *d_singularValues, float integrationDuration)
 {
@@ -11,12 +66,12 @@ __global__ void computeFtleExponent(Point *d_points, unsigned int pointsCount, f
     if (idx < pointsCount)
     {
         // Square roots of the eigenvalues are equal to the singular values for real symmetric positive semi-definite matrix
-        d_points[idx].singularValueForward = d_singularValues[idx * 6];
-        d_points[idx].singularValueBackward = d_singularValues[idx * 6 + 3];
+        float singularValueForward = d_singularValues[idx * 6];
+        float singularValueBackward = d_singularValues[idx * 6 + 3];
 
         // Compute FTLE exponent
-        d_points[idx].ftleExponentForward = log(d_points[idx].singularValueForward) / integrationDuration;
-        d_points[idx].ftleExponentBackward = log(d_points[idx].singularValueBackward) / integrationDuration;
+        d_points[idx].ftleExponentForward = log(singularValueForward) / integrationDuration;
+        d_points[idx].ftleExponentBackward = log(singularValueBackward) / integrationDuration;
     }
 }
 

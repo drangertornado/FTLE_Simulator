@@ -21,6 +21,9 @@ public:
   void printFTLEPoints(std::vector<Point> points);
   void downloadAndPrintFTLEPoints();
 
+  unsigned int getResolution();
+  float getSpacing();
+
   Point *getPoints_d_ptr();
   unsigned int getPointsCount();
   unsigned int getHiddenPointsCount();
@@ -35,11 +38,14 @@ public:
   const unsigned int SIZE_OF_MATRIX = 9, SIZE_OF_VECTOR = 3;
 
 private:
-  void initializeGrid(unsigned int resolution, float spacing);
+  void initializeGrid(unsigned int gridResolution, float gridSpacing);
 
   void initializeBuffers();
 
   cudaStream_t stream;
+
+  unsigned int resolution;
+  float spacing;
 
   std::vector<Point> points;
   CUDABuffer pointsBuffer;

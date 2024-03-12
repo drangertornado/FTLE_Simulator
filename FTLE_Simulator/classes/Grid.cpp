@@ -10,6 +10,7 @@ Grid::Grid(Settings *settings) : settings(settings)
 {
     // Initialize points in the host
     initializeGrid(settings->gridResolution, settings->gridSpacing);
+
     // Initialize buffers on the device
     initializeBuffers();
 }
@@ -27,20 +28,26 @@ Grid::~Grid()
 }
 
 // Function to initialize the points in a uniform 3D grid
-void Grid::initializeGrid(unsigned int resolution, float spacing)
+void Grid::initializeGrid(unsigned int gridResolution, float gridSpacing)
 {
-    std::cout << "\nInitializing uniform 3D Grid: " << resolution << " x " << resolution << " x " << resolution << std::endl;
-    std::cout << "Grid spacing: " << spacing << std::endl;
+    std::cout << "\nInitializing uniform 3D Grid: " << gridResolution << " x " << gridResolution << " x " << gridResolution << std::endl;
+    std::cout << "Grid spacing: " << gridSpacing << std::endl;
+
+    // Additonal boundary for computing normal vectors
+    resolution = gridResolution + 2;
+    spacing = gridSpacing;
 
     pointsCount = resolution * resolution * resolution;
     hiddenPointsCount = resolution * resolution * 6;
     points.reserve(pointsCount + hiddenPointsCount);
 
+    // Additional hidden points for computing FTLE
     std::vector<Point> hiddenPoints;
     hiddenPoints.reserve(hiddenPointsCount);
 
     float halfSize = 0.5f * (resolution - 1) * spacing;
-    aabb = AABB(glm::vec3(-halfSize), glm::vec3(halfSize));
+    // Initialize bounding box excluding the boundary points
+    aabb = AABB(glm::vec3(-halfSize + spacing), glm::vec3(halfSize - spacing));
 
     unsigned int idx = 0;
     unsigned int hiddenIdx = 0;
@@ -212,10 +219,10 @@ void Grid::printFTLEPoints(std::vector<Point> points)
         std::cout << "Initial Position (" << point.position.initial.x << ", " << point.position.initial.y << ", " << point.position.initial.z << ")" << std::endl;
         std::cout << "Current Position (Fwd) (" << point.position.currentForward.x << ", " << point.position.currentForward.y << ", " << point.position.currentForward.z << ")" << std::endl;
         std::cout << "Current Position (Bck) (" << point.position.currentBackward.x << ", " << point.position.currentBackward.y << ", " << point.position.currentBackward.z << ")" << std::endl;
-        std::cout << "Singular Value (Fwd): " << point.singularValueForward << std::endl;
-        std::cout << "Singular Value (Bck): " << point.singularValueBackward << std::endl;
         std::cout << "FTLE Exponent (Fwd): " << point.ftleExponentForward << std::endl;
         std::cout << "FTLE Exponent (Bck): " << point.ftleExponentBackward << std::endl;
+        std::cout << "Normal Vector (Fwd): (" << point.normalVectorForward.x << ", " << point.normalVectorForward.y << ", " << point.normalVectorForward.z << ")" << std::endl;
+        std::cout << "Normal Vector (Bck): (" << point.normalVectorBackward.x << ", " << point.normalVectorBackward.y << ", " << point.normalVectorBackward.z << ")" << std::endl;
     }
 }
 
@@ -226,6 +233,16 @@ void Grid::downloadAndPrintFTLEPoints()
     std::cout << "\nFTLE Values: " << std::endl;
 
     printFTLEPoints(points);
+}
+
+unsigned int Grid::getResolution()
+{
+    return resolution;
+}
+
+float Grid::getSpacing()
+{
+    return spacing;
 }
 
 Point *Grid::getPoints_d_ptr()

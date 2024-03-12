@@ -9,6 +9,9 @@
 #include "Grid.h"
 #include "Settings.h"
 
+__global__ void computeNormalVector(Point *d_points,
+									unsigned int pointsCount);
+
 __global__ void computeFtleExponent(Point *d_points,
 									unsigned int pointsCount,
 									float *d_singularValues,
