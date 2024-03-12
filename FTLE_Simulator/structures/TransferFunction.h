@@ -15,27 +15,31 @@ struct TransferFunction
     float maximumOpacity;
 
     __host__ TransferFunction() : minimumValue(0.0f),
-                                             maximumValue(0.0f),
-                                             medianValue(0.0f),
-                                             minimumColor(0.0f),
-                                             maximumColor(0.0f),
-                                             maximumOpacity(0.0f) {}
+                                  maximumValue(0.0f),
+                                  medianValue(0.0f),
+                                  minimumColor(0.0f),
+                                  maximumColor(0.0f),
+                                  maximumOpacity(0.0f) {}
 
     __host__ TransferFunction(float minimumValue,
-                                         float maximumValue,
-                                         glm::vec3 minimumColor,
-                                         glm::vec3 maximumColor,
-                                         float maximumOpacity) : minimumValue(minimumValue),
-                                                                   maximumValue(maximumValue),
-                                                                   minimumColor(minimumColor),
-                                                                   maximumColor(maximumColor),
-                                                                   maximumOpacity(maximumOpacity)
+                              float maximumValue,
+                              glm::vec3 minimumColor,
+                              glm::vec3 maximumColor,
+                              float maximumOpacity) : minimumValue(minimumValue),
+                                                      maximumValue(maximumValue),
+                                                      minimumColor(minimumColor),
+                                                      maximumColor(maximumColor),
+                                                      maximumOpacity(maximumOpacity)
     {
         medianValue = (minimumValue + maximumValue) * 0.5f;
     }
 
     __device__ glm::vec4 getColor(const float &scalarValue)
     {
+        // If the sample point is negative we need to blend with black
+        if (scalarValue < 0.0f)
+            return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
         glm::vec4 interpolatedColor(0.0f);
 
         // Check if scalarValue is within range [scalarValueMin, scalarValueMax]
@@ -46,7 +50,7 @@ struct TransferFunction
 
             // Interpolate color
             interpolatedColor = glm::mix(glm::vec4(minimumColor, 0.0f), glm::vec4(maximumColor, 0.0f), fractionalDistance);
-            
+
             // Interpolate opacity using bump function
             float opacity;
             if (scalarValue <= medianValue)
@@ -60,7 +64,7 @@ struct TransferFunction
                 opacity = glm::mix(maximumOpacity, 0.0f, glm::smoothstep(0.0f, 1.0f, fractionalDistance));
             }
 
-            interpolatedColor.a = opacity;            
+            interpolatedColor.a = opacity;
         }
 
         return interpolatedColor;

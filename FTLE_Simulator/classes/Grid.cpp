@@ -10,7 +10,6 @@ Grid::Grid(Settings *settings) : settings(settings)
 {
     // Initialize points in the host
     initializeGrid(settings->gridResolution, settings->gridSpacing);
-
     // Initialize buffers on the device
     initializeBuffers();
 }

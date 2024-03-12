@@ -29,38 +29,8 @@ __global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, un
         // Generate ray
         Ray ray(normalizedDeviceCoords, camera);
 
-        // Default pixel color to black
-        glm::vec4 pixelColor(0.0f);
-
-        // Compute ray intersections on the volume's axis aligned bounding box (AABB)
-        float tmin, tmax;
-        if (gridAABB.intersectRay(ray, tmin, tmax))
-        {
-            // Ray march through the bounding volume based on step size
-            for (float t = tmin; t <= tmax; t += rayStepSize)
-            {
-                glm::vec3 samplePoint = ray.origin + t * ray.direction;
-
-                glm::vec2 interpolatedScalar = interpolateScalar(samplePoint, points, gridResolution, gridSpacing);
-
-                // Use transfer function to add color to pixelColor variable
-                glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalar.x);
-                glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalar.y);
-
-                // Use additive blending
-                glm::vec4 interpolatedColorBlended = interpolatedColorForward + interpolatedColorBackward;
-                // glm::vec4 interpolatedColorBlended = (interpolatedColorForward + interpolatedColorBackward) * 0.5f;
-
-                // Use over blending for forward composting
-                pixelColor = overBlend(pixelColor, interpolatedColorBlended);
-
-                // Early ray termination if opacity is 1.0f
-                if (pixelColor.a >= 0.999999f)
-                {
-                    break;
-                }
-            }
-        }
+        // Integrate colors by ray marching
+        glm::vec4 pixelColor = rayMarch(points, gridResolution, gridSpacing, gridAABB, ray, rayStepSize, tfForward, tfBackward);
 
         // Save pixel color
         pixels[idx * channelsPerPixel] = static_cast<unsigned char>(glm::clamp(pixelColor.r * 255.0f, 0.0f, 255.0f));
@@ -80,55 +50,23 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
         // Compute normalized device coordinates of the pixel with origin at the center
         glm::vec2 normalizedDeviceCoords = normalizePixels(idx, camera.viewportSize);
 
-        // Default pixel color to black
-        glm::vec4 pixelColor(0.0f);
+        // Generate ray
+        Ray ray(normalizedDeviceCoords, camera, antiAliasingIntensity, curandStates[idx]);
+        
+        // Integrate colors by ray marching
+        glm::vec4 pixelColor = rayMarch(points, gridResolution, gridSpacing, gridAABB, ray, rayStepSize, tfForward, tfBackward);
 
         // Generate rays
-        for (unsigned int rayIdx = 0; rayIdx < raysCount; rayIdx++)
+        for (unsigned int rayIdx = 0; rayIdx < raysCount - 1; rayIdx++)
         {
             // Generate ray
             Ray ray(normalizedDeviceCoords, camera, antiAliasingIntensity, curandStates[idx]);
 
-            // Compute ray intersections on the volume's axis aligned bounding box (AABB)
-            float tmin, tmax;
-            if (gridAABB.intersectRay(ray, tmin, tmax))
-            {
-                glm::vec4 pixelColorPerRay(0.0f);
+            // Integrate colors by ray marching
+            glm::vec4 pixelColorPerRay = rayMarch(points, gridResolution, gridSpacing, gridAABB, ray, rayStepSize, tfForward, tfBackward);
 
-                // Ray march through the bounding volume based on step size
-                for (float t = tmin; t <= tmax; t += rayStepSize)
-                {
-                    glm::vec3 samplePoint = ray.origin + t * ray.direction;
-
-                    glm::vec2 interpolatedScalar = interpolateScalar(samplePoint, points, gridResolution, gridSpacing);
-
-                    // Use transfer function to add color to pixelColor variable
-                    glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalar.x);
-                    glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalar.y);
-
-                    // Use additive blending
-                    glm::vec4 interpolatedColorBlended = interpolatedColorForward + interpolatedColorBackward;
-                    // glm::vec4 interpolatedColorBlended = (interpolatedColorForward + interpolatedColorBackward) * 0.5f;
-
-                    // Use over blending for forward composting
-                    pixelColorPerRay = overBlend(pixelColorPerRay, interpolatedColorBlended);
-
-                    // Early ray termination if opacity is 1.0f
-                    if (pixelColorPerRay.a >= 0.999999f)
-                    {
-                        break;
-                    }
-                }
-
-                if (rayIdx > 0)
-                {
-                    pixelColor = (pixelColor + pixelColorPerRay) * 0.5f;
-                }
-                else
-                {
-                    pixelColor = pixelColorPerRay;
-                }
-            }
+            // Mix colors
+            pixelColor = (pixelColor + pixelColorPerRay) * 0.5f;
         }
 
         // Save pixel color
@@ -137,6 +75,42 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
         pixels[idx * channelsPerPixel + 2] = static_cast<unsigned char>(glm::clamp(pixelColor.b * 255.0f, 0.0f, 255.0f));
         pixels[idx * channelsPerPixel + 3] = static_cast<unsigned char>(glm::clamp(pixelColor.a * 255.0f, 0.0f, 255.0f));
     }
+}
+
+__device__ glm::vec4 rayMarch(Point *points, unsigned int &gridResolution, float &gridSpacing, AABB &gridAABB, Ray &ray, float &rayStepSize, TransferFunction &tfForward, TransferFunction &tfBackward)
+{
+    // Default pixel color to black
+    glm::vec4 pixelColor(0.0f);
+
+    // Compute ray intersections on the volume's axis aligned bounding box (AABB)
+    float tmin, tmax;
+    if (gridAABB.intersectRay(ray, tmin, tmax))
+    {
+        // Ray march through the bounding volume based on step size
+        for (float t = tmin; t <= tmax + 10.0f; t += rayStepSize)
+        {
+            glm::vec3 samplePoint = ray.origin + t * ray.direction;
+
+            glm::vec2 interpolatedScalar = interpolateScalar(samplePoint, points, gridResolution, gridSpacing);
+
+            // Use transfer function to add color to pixelColor variable
+            glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalar.x);
+            glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalar.y);
+
+            // Use additive blending
+            glm::vec4 interpolatedColorBlended = interpolatedColorForward + interpolatedColorBackward;
+            interpolatedColorBlended.a *= 0.5f;
+
+            // Use over blending for forward composting
+            pixelColor = overBlend(pixelColor, interpolatedColorBlended);
+
+            // Early ray termination if opacity is 1.0f
+            if (pixelColor.a >= 1.0f)
+                break;
+        }
+    }
+
+    return pixelColor;
 }
 
 // Function to normalize the pixels to device coordinates
@@ -157,9 +131,15 @@ __device__ glm::vec2 interpolateScalar(const glm::vec3 &samplePoint, const Point
     glm::vec3 transformedSamplePoint = (samplePoint + halfSize) * gridSpacingInverse;
 
     // Coordinates of left (x), bottom (y) and front (z) neighbour point
-    unsigned int xmin = static_cast<unsigned int>(transformedSamplePoint.x);
-    unsigned int ymin = static_cast<unsigned int>(transformedSamplePoint.y);
-    unsigned int zmin = static_cast<unsigned int>(transformedSamplePoint.z);
+    int xmin = static_cast<int>(transformedSamplePoint.x);
+    int ymin = static_cast<int>(transformedSamplePoint.y);
+    int zmin = static_cast<int>(transformedSamplePoint.z);
+
+    // If the sample point is outside the bounding box return negative scalar value
+    if (xmin < 0 || xmin > resolution - 2 ||
+        ymin < 0 || ymin > resolution - 2 ||
+        zmin < 0 || zmin > resolution - 2)
+        return glm::vec2(-1.0f);
 
     // Linearized index of 8 neighbouring points within the cell
     unsigned int frontBottomLeftIdx = linearizeIndex(xmin, ymin, zmin, resolution);
@@ -232,20 +212,15 @@ __device__ unsigned int linearizeIndex(const int &x, const int &y, const int &z,
 // Function to blend foreground over background
 __device__ glm::vec4 overBlend(const glm::vec4 &foreground, const glm::vec4 &background)
 {
-    glm::vec4 blendedColor(0.0f);
-
-    if (background.a >= 0.001f)
-    {
-        // Blend colors
-        blendedColor.r = foreground.a * foreground.r + (1.0f - foreground.a) * background.r;
-        blendedColor.g = foreground.a * foreground.g + (1.0f - foreground.a) * background.g;
-        blendedColor.b = foreground.a * foreground.b + (1.0f - foreground.a) * background.b;
-        blendedColor.a = foreground.a + (1.0f - foreground.a) * background.a;
-    }
-    else
-    {
+    if (background.a == 0.0f)
         return foreground;
-    }
+
+    // Blend colors
+    glm::vec4 blendedColor(0.0f);
+    blendedColor.r = foreground.a * foreground.r + (1.0f - foreground.a) * background.r;
+    blendedColor.g = foreground.a * foreground.g + (1.0f - foreground.a) * background.g;
+    blendedColor.b = foreground.a * foreground.b + (1.0f - foreground.a) * background.b;
+    blendedColor.a = foreground.a + (1.0f - foreground.a) * background.a;
 
     return blendedColor;
 }
