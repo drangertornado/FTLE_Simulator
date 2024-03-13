@@ -17,7 +17,7 @@ __global__ void setupCurandStates(curandState *curandStates, unsigned int curand
 }
 
 // Function to render the volume
-__global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, Camera camera, float rayStepSize, TransferFunction tfForward, TransferFunction tfBackward)
+__global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Camera camera, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, float rayStepSize, TransferFunction tfForward, TransferFunction tfBackward)
 {
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -30,7 +30,7 @@ __global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, un
         Ray ray(normalizedDeviceCoords, camera);
 
         // Integrate colors by ray marching
-        glm::vec4 pixelColor = rayMarch(points, gridResolution, gridSpacing, gridAABB, ray, rayStepSize, tfForward, tfBackward);
+        glm::vec4 pixelColor = rayMarch(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, tfForward, tfBackward);
 
         // Save pixel color
         pixels[idx * channelsPerPixel] = static_cast<unsigned char>(glm::clamp(pixelColor.r * 255.0f, 0.0f, 255.0f));
@@ -41,7 +41,7 @@ __global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, un
 }
 
 // Function to render the volume with anti-aliasing
-__global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, Camera camera, unsigned int raysCount, float rayStepSize, float antiAliasingIntensity, TransferFunction tfForward, TransferFunction tfBackward, curandState *curandStates)
+__global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Camera camera, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, unsigned int raysCount, float rayStepSize, float antiAliasingIntensity, TransferFunction tfForward, TransferFunction tfBackward, curandState *curandStates)
 {
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -52,9 +52,9 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
 
         // Generate ray
         Ray ray(normalizedDeviceCoords, camera, antiAliasingIntensity, curandStates[idx]);
-        
+
         // Integrate colors by ray marching
-        glm::vec4 pixelColor = rayMarch(points, gridResolution, gridSpacing, gridAABB, ray, rayStepSize, tfForward, tfBackward);
+        glm::vec4 pixelColor = rayMarch(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, tfForward, tfBackward);
 
         // Generate rays
         for (unsigned int rayIdx = 0; rayIdx < raysCount - 1; rayIdx++)
@@ -63,7 +63,7 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
             Ray ray(normalizedDeviceCoords, camera, antiAliasingIntensity, curandStates[idx]);
 
             // Integrate colors by ray marching
-            glm::vec4 pixelColorPerRay = rayMarch(points, gridResolution, gridSpacing, gridAABB, ray, rayStepSize, tfForward, tfBackward);
+            glm::vec4 pixelColorPerRay = rayMarch(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, tfForward, tfBackward);
 
             // Mix colors
             pixelColor = (pixelColor + pixelColorPerRay) * 0.5f;
@@ -77,7 +77,7 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
     }
 }
 
-__device__ glm::vec4 rayMarch(Point *points, unsigned int &gridResolution, float &gridSpacing, AABB &gridAABB, Ray &ray, float &rayStepSize, TransferFunction &tfForward, TransferFunction &tfBackward)
+__device__ glm::vec4 rayMarch(Ray &ray, float &rayStepSize, Point *points, unsigned int &gridResolution, float &gridSpacing, AABB &gridAABB, TransferFunction &tfForward, TransferFunction &tfBackward)
 {
     // Default pixel color to black
     glm::vec4 pixelColor(0.0f);
@@ -87,15 +87,33 @@ __device__ glm::vec4 rayMarch(Point *points, unsigned int &gridResolution, float
     if (gridAABB.intersectRay(ray, tmin, tmax))
     {
         // Ray march through the bounding volume based on step size
-        for (float t = tmin; t <= tmax + 10.0f; t += rayStepSize)
+        for (float t = tmin; t <= tmax + 1.0f; t += rayStepSize)
         {
             glm::vec3 samplePoint = ray.origin + t * ray.direction;
 
-            glm::vec2 interpolatedScalar = interpolateScalar(samplePoint, points, gridResolution, gridSpacing);
+            // Early ray termination if opacity is 1.0f
+            if (pixelColor.a >= 0.9999f)
+            {
+                break;
+            }
 
-            // Use transfer function to add color to pixelColor variable
-            glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalar.x);
-            glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalar.y);
+            // Blend with black color if the ray is outside the bounding box
+            if (t > tmax)
+            {
+                pixelColor = overBlend(pixelColor, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+                break;
+            }
+
+            // Interpolate scalar values (x - forward, y - backward)
+            glm::vec2 interpolatedScalars;
+            // Interpolated normals
+            glm::vec3 interpolatedNormalsForward, interpolatedNormalsBackward;
+            // Perform trilinear interpolation on the sample point
+            interpolateParameters(samplePoint, points, gridResolution, gridSpacing, interpolatedScalars, interpolatedNormalsForward, interpolatedNormalsBackward);
+
+            // Use transfer function to set color
+            glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalars.x, interpolatedNormalsForward);
+            glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalars.y, interpolatedNormalsBackward);
 
             // Use additive blending
             glm::vec4 interpolatedColorBlended = interpolatedColorForward + interpolatedColorBackward;
@@ -103,10 +121,6 @@ __device__ glm::vec4 rayMarch(Point *points, unsigned int &gridResolution, float
 
             // Use over blending for forward composting
             pixelColor = overBlend(pixelColor, interpolatedColorBlended);
-
-            // Early ray termination if opacity is 1.0f
-            if (pixelColor.a >= 1.0f)
-                break;
         }
     }
 
@@ -122,8 +136,8 @@ __device__ glm::vec2 normalizePixels(const unsigned int &pixelIndex, const glm::
     return glm::vec2(normalizedDeviceCoordsX, normalizedDeviceCoordsY);
 }
 
-// Function to interpolate the scalar values
-__device__ glm::vec2 interpolateScalar(const glm::vec3 &samplePoint, const Point *points, const unsigned int &resolution, const float &spacing)
+// Function to interpolate the parameters (FTLE values and normal vectors)
+__device__ void interpolateParameters(const glm::vec3 &samplePoint, const Point *points, const unsigned int &resolution, const float &spacing, glm::vec2 &interpolatedScalars, glm::vec3 &interpolatedNormalsForward, glm::vec3 &interpolatedNormalsBackward)
 {
     // Apply inverse transformation
     float halfSize = 0.5f * (resolution - 1) * spacing;
@@ -134,12 +148,6 @@ __device__ glm::vec2 interpolateScalar(const glm::vec3 &samplePoint, const Point
     int xmin = static_cast<int>(transformedSamplePoint.x);
     int ymin = static_cast<int>(transformedSamplePoint.y);
     int zmin = static_cast<int>(transformedSamplePoint.z);
-
-    // If the sample point is outside the bounding box return negative scalar value
-    if (xmin < 0 || xmin > resolution - 2 ||
-        ymin < 0 || ymin > resolution - 2 ||
-        zmin < 0 || zmin > resolution - 2)
-        return glm::vec2(-1.0f);
 
     // Linearized index of 8 neighbouring points within the cell
     unsigned int frontBottomLeftIdx = linearizeIndex(xmin, ymin, zmin, resolution);
@@ -155,52 +163,124 @@ __device__ glm::vec2 interpolateScalar(const glm::vec3 &samplePoint, const Point
     glm::vec3 fractionalDistances = transformedSamplePoint - glm::vec3(xmin, ymin, zmin);
 
     // Perform linear interpolation along the x-axis
-    glm::vec2 interpolatedValueXFrontBottom = glm::mix(
+    // Interpolate scalars
+    glm::vec2 interpolatedScalarXFrontBottom = glm::mix(
         glm::vec2(points[frontBottomLeftIdx].ftleExponentForward,
                   points[frontBottomLeftIdx].ftleExponentBackward),
         glm::vec2(points[frontBottomRightIdx].ftleExponentForward,
                   points[frontBottomRightIdx].ftleExponentBackward),
         fractionalDistances.x);
 
-    glm::vec2 interpolatedValueXFrontTop = glm::mix(
+    glm::vec2 interpolatedScalarXFrontTop = glm::mix(
         glm::vec2(points[frontTopLeftIdx].ftleExponentForward,
                   points[frontTopLeftIdx].ftleExponentBackward),
         glm::vec2(points[frontTopRightIdx].ftleExponentForward,
                   points[frontTopRightIdx].ftleExponentBackward),
         fractionalDistances.x);
 
-    glm::vec2 interpolatedValueXBackBottom = glm::mix(
+    glm::vec2 interpolatedScalarXBackBottom = glm::mix(
         glm::vec2(points[backBottomLeftIdx].ftleExponentForward,
                   points[backBottomLeftIdx].ftleExponentBackward),
         glm::vec2(points[backBottomRightIdx].ftleExponentForward,
                   points[backBottomRightIdx].ftleExponentBackward),
         fractionalDistances.x);
 
-    glm::vec2 interpolatedValueXBackTop = glm::mix(
+    glm::vec2 interpolatedScalarXBackTop = glm::mix(
         glm::vec2(points[backTopLeftIdx].ftleExponentForward,
                   points[backTopLeftIdx].ftleExponentBackward),
         glm::vec2(points[backTopRightIdx].ftleExponentForward,
                   points[backTopRightIdx].ftleExponentBackward),
         fractionalDistances.x);
 
+    // Interpolate normals
+    glm::vec3 interpolatedNormalXFrontBottomForward = glm::mix(
+        points[frontBottomLeftIdx].normalVectorForward,
+        points[frontBottomRightIdx].normalVectorForward,
+        fractionalDistances.x);
+
+    glm::vec3 interpolatedNormalXFrontBottomBackward = glm::mix(
+        points[frontBottomLeftIdx].normalVectorBackward,
+        points[frontBottomRightIdx].normalVectorBackward,
+        fractionalDistances.x);
+
+    glm::vec3 interpolatedNormalXFrontTopForward = glm::mix(
+        points[frontTopLeftIdx].normalVectorForward,
+        points[frontTopRightIdx].normalVectorForward,
+        fractionalDistances.x);
+
+    glm::vec3 interpolatedNormalXFrontTopBackward = glm::mix(
+        points[frontTopLeftIdx].normalVectorBackward,
+        points[frontTopRightIdx].normalVectorBackward,
+        fractionalDistances.x);
+
+    glm::vec3 interpolatedNormalXBackBottomForward = glm::mix(
+        points[backBottomLeftIdx].normalVectorForward,
+        points[backBottomRightIdx].normalVectorForward,
+        fractionalDistances.x);
+
+    glm::vec3 interpolatedNormalXBackBottomBackward = glm::mix(
+        points[backBottomLeftIdx].normalVectorBackward,
+        points[backBottomRightIdx].normalVectorBackward,
+        fractionalDistances.x);
+
+    glm::vec3 interpolatedNormalXBackTopForward = glm::mix(
+        points[backTopLeftIdx].normalVectorForward,
+        points[backTopRightIdx].normalVectorForward,
+        fractionalDistances.x);
+
+    glm::vec3 interpolatedNormalXBackTopBackward = glm::mix(
+        points[backTopLeftIdx].normalVectorBackward,
+        points[backTopRightIdx].normalVectorBackward,
+        fractionalDistances.x);
+
     // Perform linear interpolation along the y-axis
-    glm::vec2 interpolatedValueYFront = glm::mix(
-        interpolatedValueXFrontBottom,
-        interpolatedValueXFrontTop,
+    // Interpolate scalars
+    glm::vec2 interpolatedScalarYFront = glm::mix(
+        interpolatedScalarXFrontBottom,
+        interpolatedScalarXFrontTop,
         fractionalDistances.y);
 
-    glm::vec2 interpolatedValueYBack = glm::mix(
-        interpolatedValueXBackBottom,
-        interpolatedValueXBackTop,
+    glm::vec2 interpolatedScalarYBack = glm::mix(
+        interpolatedScalarXBackBottom,
+        interpolatedScalarXBackTop,
+        fractionalDistances.y);
+
+    // Interpolate normals
+    glm::vec3 interpolatedNormalYFrontForward = glm::mix(
+        interpolatedNormalXFrontBottomForward,
+        interpolatedNormalXFrontTopForward,
+        fractionalDistances.y);
+
+    glm::vec3 interpolatedNormalYFrontBackward = glm::mix(
+        interpolatedNormalXFrontBottomBackward,
+        interpolatedNormalXFrontTopBackward,
+        fractionalDistances.y);
+
+    glm::vec3 interpolatedNormalYBackForward = glm::mix(
+        interpolatedNormalXBackBottomForward,
+        interpolatedNormalXBackTopForward,
+        fractionalDistances.y);
+
+    glm::vec3 interpolatedNormalYBackBackward = glm::mix(
+        interpolatedNormalXBackBottomBackward,
+        interpolatedNormalXBackTopBackward,
         fractionalDistances.y);
 
     // Perform linear interpolation along the z-axis
-    glm::vec2 interpolatedScalarValue = glm::mix(
-        interpolatedValueYFront,
-        interpolatedValueYBack,
+    interpolatedScalars = glm::mix(
+        interpolatedScalarYFront,
+        interpolatedScalarYBack,
         fractionalDistances.z);
 
-    return interpolatedScalarValue;
+    interpolatedNormalsForward = glm::mix(
+        interpolatedNormalYFrontForward,
+        interpolatedNormalYBackForward,
+        fractionalDistances.z);
+
+    interpolatedNormalsBackward = glm::mix(
+        interpolatedNormalYFrontBackward,
+        interpolatedNormalYBackBackward,
+        fractionalDistances.z);
 }
 
 // Function to linearize the coordinates
@@ -212,8 +292,11 @@ __device__ unsigned int linearizeIndex(const int &x, const int &y, const int &z,
 // Function to blend foreground over background
 __device__ glm::vec4 overBlend(const glm::vec4 &foreground, const glm::vec4 &background)
 {
-    if (background.a == 0.0f)
+    // If the background is very transparent there is no point in blending
+    if (background.a <= 0.0001f)
+    {
         return foreground;
+    }
 
     // Blend colors
     glm::vec4 blendedColor(0.0f);
@@ -251,11 +334,11 @@ namespace VolumeRenderKernel
                 renderer->getPixels_d_ptr(),
                 renderer->getPixelsCount(),
                 renderer->getPixelChannelsCount(),
+                *renderer->getCamera(),
                 grid->getPoints_d_ptr(),
                 grid->getResolution(),
                 grid->getSpacing(),
                 *grid->getAABB(),
-                *renderer->getCamera(),
                 settings->raysCount,
                 settings->rayStepSize,
                 settings->antiAliasingIntensity,
@@ -269,11 +352,11 @@ namespace VolumeRenderKernel
                 renderer->getPixels_d_ptr(),
                 renderer->getPixelsCount(),
                 renderer->getPixelChannelsCount(),
+                *renderer->getCamera(),
                 grid->getPoints_d_ptr(),
                 grid->getResolution(),
                 grid->getSpacing(),
                 *grid->getAABB(),
-                *renderer->getCamera(),
                 settings->rayStepSize,
                 settings->tfForward,
                 settings->tfBackward);

@@ -18,11 +18,11 @@ __global__ void setupCurandStates(curandState *curandStates, unsigned int curand
 __global__ void volumeRender(unsigned char *pixels,
 							 unsigned int pixelsCount,
 							 unsigned int channelsPerPixel,
+							 Camera camera,
 							 Point *points,
 							 unsigned int gridResolution,
 							 float gridSpacing,
 							 AABB gridAABB,
-							 Camera camera,
 							 float rayStepSize,
 							 TransferFunction tfForward,
 							 TransferFunction tfBackward);
@@ -30,11 +30,11 @@ __global__ void volumeRender(unsigned char *pixels,
 __global__ void volumeRenderAA(unsigned char *pixels,
 							   unsigned int pixelsCount,
 							   unsigned int channelsPerPixel,
+							   Camera camera,
 							   Point *points,
 							   unsigned int gridResolution,
 							   float gridSpacing,
 							   AABB gridAABB,
-							   Camera camera,
 							   unsigned int raysCount,
 							   float rayStepSize,
 							   float antiAliasingIntensity,
@@ -42,14 +42,17 @@ __global__ void volumeRenderAA(unsigned char *pixels,
 							   TransferFunction tfBackward,
 							   curandState *curandStates);
 
-__device__ glm::vec4 rayMarch(Point *points, unsigned int &gridResolution, float &gridSpacing, AABB &gridAABB, Ray &ray, float &rayStepSize, TransferFunction &tfForward, TransferFunction &tfBackward);
+__device__ glm::vec4 rayMarch(Ray &ray, float &rayStepSize, Point *points, unsigned int &gridResolution, float &gridSpacing, AABB &gridAABB, TransferFunction &tfForward, TransferFunction &tfBackward);
 
 __device__ glm::vec2 normalizePixels(const unsigned int &pixelIndex, const glm::vec2 &viewportSize);
 
-__device__ glm::vec2 interpolateScalar(const glm::vec3 &samplePoint,
-									   const Point *points,
-									   const unsigned int &resolution,
-									   const float &spacing);
+__device__ void interpolateParameters(const glm::vec3 &samplePoint,
+									  const Point *points,
+									  const unsigned int &resolution,
+									  const float &spacing,
+									  glm::vec2 &interpolatedScalars,
+									  glm::vec3 &interpolatedNormalsForward,
+									  glm::vec3 &interpolatedNormalsBackward);
 
 __device__ unsigned int linearizeIndex(const int &x, const int &y, const int &z, const unsigned int &resolution);
 

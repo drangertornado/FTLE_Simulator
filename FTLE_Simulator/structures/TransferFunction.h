@@ -34,12 +34,8 @@ struct TransferFunction
         medianValue = (minimumValue + maximumValue) * 0.5f;
     }
 
-    __device__ glm::vec4 getColor(const float &scalarValue)
+    __device__ glm::vec4 getColor(const float &scalarValue, const glm::vec3 &normalVector)
     {
-        // If the sample point is negative we need to blend with black
-        if (scalarValue < 0.0f)
-            return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
         glm::vec4 interpolatedColor(0.0f);
 
         // Check if scalarValue is within range [scalarValueMin, scalarValueMax]

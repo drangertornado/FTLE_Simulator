@@ -10,9 +10,9 @@ class Settings
 {
 public:
     /* Window */
-    const unsigned int screenWidth = 800;
-    const unsigned int screenHeight = 600;
-    const bool fullScreen = false;
+    const unsigned int screenWidth = 1920;
+    const unsigned int screenHeight = 1080;
+    const bool fullScreen = true;
 
     /* Grid */
     // Set the grid resolution
@@ -64,7 +64,7 @@ public:
     unsigned int svdSort = 1;
 
     /* Ray tracing */
-    unsigned int raysCount = 4;
+    unsigned int raysCount = 2;
     float rayStepSize = 0.05f;
     bool antiAliasingEnabled = true;
     float antiAliasingIntensity = 0.001f;
