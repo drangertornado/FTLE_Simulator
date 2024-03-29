@@ -34,7 +34,8 @@ struct TransferFunction
         medianValue = (minimumValue + maximumValue) * 0.5f;
     }
 
-    __device__ glm::vec4 getColor(const float &scalarValue, const glm::vec3 &normalVector)
+    // Compute color directly form interpolated scalar values
+    __device__ glm::vec4 getColor(const float &scalarValue)
     {
         glm::vec4 interpolatedColor(0.0f);
 

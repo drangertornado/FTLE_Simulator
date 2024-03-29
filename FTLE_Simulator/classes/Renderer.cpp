@@ -47,7 +47,7 @@ void Renderer::initializeBuffers(unsigned int width, unsigned int height)
 
     // Allocate memory for pixels
     pixelsCount = width * height;
-    pixelChannelsCount = 4;
+    pixelChannelsCount = 3;
     pixels = std::vector<unsigned char>(pixelsCount * pixelChannelsCount);
     pixelsBuffer.allocAndUpload(pixels);
 
@@ -88,7 +88,6 @@ void Renderer::drawGradient(unsigned int width, unsigned int height)
             pixels[index] = static_cast<unsigned char>(x * stepR);
             pixels[index + 1] = static_cast<unsigned char>(y * stepG);
             pixels[index + 2] = 0;
-            pixels[index + 3] = 255;
         }
     }
 }

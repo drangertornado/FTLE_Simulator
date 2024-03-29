@@ -197,7 +197,7 @@ void Window::processInput()
 void Window::render()
 {
     renderer->render();
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, settings->screenWidth, settings->screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, renderer->getPixels());
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, settings->screenWidth, settings->screenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, renderer->getPixels());
     glGenerateMipmap(GL_TEXTURE_2D);
 }
 

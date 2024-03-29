@@ -36,7 +36,6 @@ __global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, un
         pixels[idx * channelsPerPixel] = static_cast<unsigned char>(glm::clamp(pixelColor.r * 255.0f, 0.0f, 255.0f));
         pixels[idx * channelsPerPixel + 1] = static_cast<unsigned char>(glm::clamp(pixelColor.g * 255.0f, 0.0f, 255.0f));
         pixels[idx * channelsPerPixel + 2] = static_cast<unsigned char>(glm::clamp(pixelColor.b * 255.0f, 0.0f, 255.0f));
-        pixels[idx * channelsPerPixel + 3] = static_cast<unsigned char>(glm::clamp(pixelColor.a * 255.0f, 0.0f, 255.0f));
     }
 }
 
@@ -73,7 +72,6 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
         pixels[idx * channelsPerPixel] = static_cast<unsigned char>(glm::clamp(pixelColor.r * 255.0f, 0.0f, 255.0f));
         pixels[idx * channelsPerPixel + 1] = static_cast<unsigned char>(glm::clamp(pixelColor.g * 255.0f, 0.0f, 255.0f));
         pixels[idx * channelsPerPixel + 2] = static_cast<unsigned char>(glm::clamp(pixelColor.b * 255.0f, 0.0f, 255.0f));
-        pixels[idx * channelsPerPixel + 3] = static_cast<unsigned char>(glm::clamp(pixelColor.a * 255.0f, 0.0f, 255.0f));
     }
 }
 
@@ -87,20 +85,13 @@ __device__ glm::vec4 rayMarch(Ray &ray, float &rayStepSize, Point *points, unsig
     if (gridAABB.intersectRay(ray, tmin, tmax))
     {
         // Ray march through the bounding volume based on step size
-        for (float t = tmin; t <= tmax + 1.0f; t += rayStepSize)
+        for (float t = tmin; t <= tmax; t += rayStepSize)
         {
             glm::vec3 samplePoint = ray.origin + t * ray.direction;
 
             // Early ray termination if opacity is 1.0f
             if (pixelColor.a >= 0.9999f)
             {
-                break;
-            }
-
-            // Blend with black color if the ray is outside the bounding box
-            if (t > tmax)
-            {
-                pixelColor = overBlend(pixelColor, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
                 break;
             }
 
@@ -112,8 +103,10 @@ __device__ glm::vec4 rayMarch(Ray &ray, float &rayStepSize, Point *points, unsig
             interpolateParameters(samplePoint, points, gridResolution, gridSpacing, interpolatedScalars, interpolatedNormalsForward, interpolatedNormalsBackward);
 
             // Use transfer function to set color
-            glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalars.x, interpolatedNormalsForward);
-            glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalars.y, interpolatedNormalsBackward);
+            glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalars.x);
+            glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalars.y);
+
+            // TODO: Apply lighting using normals for both forward and backward
 
             // Use additive blending
             glm::vec4 interpolatedColorBlended = interpolatedColorForward + interpolatedColorBackward;
@@ -121,6 +114,12 @@ __device__ glm::vec4 rayMarch(Ray &ray, float &rayStepSize, Point *points, unsig
 
             // Use over blending for forward composting
             pixelColor = overBlend(pixelColor, interpolatedColorBlended);
+        }
+
+        // Blend with black color if alpha is not 1.0f
+        if (pixelColor.a < 0.9999f)
+        {
+            pixelColor = overBlend(pixelColor, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
         }
     }
 

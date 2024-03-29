@@ -42,7 +42,14 @@ __global__ void volumeRenderAA(unsigned char *pixels,
 							   TransferFunction tfBackward,
 							   curandState *curandStates);
 
-__device__ glm::vec4 rayMarch(Ray &ray, float &rayStepSize, Point *points, unsigned int &gridResolution, float &gridSpacing, AABB &gridAABB, TransferFunction &tfForward, TransferFunction &tfBackward);
+__device__ glm::vec4 rayMarch(Ray &ray,
+							  float &rayStepSize,
+							  Point *points,
+							  unsigned int &gridResolution,
+							  float &gridSpacing,
+							  AABB &gridAABB,
+							  TransferFunction &tfForward,
+							  TransferFunction &tfBackward);
 
 __device__ glm::vec2 normalizePixels(const unsigned int &pixelIndex, const glm::vec2 &viewportSize);
 

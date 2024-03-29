@@ -46,6 +46,8 @@ add_executable(main
     cuda/CuSolver.h
     structures/AABB.h
     structures/Camera.h
+    structures/Light.h
+    structures/Material.h
     structures/Ray.h
     structures/Point.h
     structures/TransferFunction.h

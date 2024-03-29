@@ -4,6 +4,8 @@
 #pragma once
 
 #include "glm.hpp"
+#include "Light.h"
+#include "Material.h"
 #include "TransferFunction.h"
 
 class Settings
@@ -25,6 +27,21 @@ public:
     float mouseSensitivity = 0.01f;
     bool invertMouseVertically = true;
 
+    /* Lighting */
+    DirectionalLight directionalLight{
+        glm::vec3(0.0f, 0.0f, 0.0f),  // Light color
+        glm::vec3(0.2f, 0.2f, -1.0f), // Light direction
+        100.0f                        // Light intensity
+    };
+
+    /* Material */
+    Material material{
+        0.2f, // Ambient factor
+        1.0f, // Diffuse factor
+        0.5f, // Specular factor
+        20.0f // Specular exponent
+    };
+
     /* Transfer functions */
     // Transfer function for forward flow
     TransferFunction tfForward{
@@ -32,7 +49,7 @@ public:
         2.0f,                        // Maximum scalar value
         glm::vec3(0.0f, 0.5f, 0.0f), // Color at minimum
         glm::vec3(0.0f, 1.0f, 0.0f), // Color at maximum
-        1.0f                         // Maximum opacity
+        1.0f,                        // Maximum opacity
     };
     // Transfer function for backward flow
     TransferFunction tfBackward{
@@ -40,7 +57,7 @@ public:
         2.0f,                        // Maximum scalar value
         glm::vec3(0.5f, 0.0f, 0.5f), // Color at minimum
         glm::vec3(1.0f, 0.0f, 1.0f), // Color at maximum
-        1.0f                         // Maximum opacity
+        1.0f,                        // Maximum opacity
     };
 
     /* RK4 integration */
