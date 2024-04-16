@@ -28,6 +28,7 @@ private:
     static Window *windowInstance;
     static void mouse_callback(GLFWwindow* glfwWindow, double inputPositionX, double inputPositionY);
     static void scroll_callback(GLFWwindow *glfwWindow, double offsetX, double offsetY);
+    static void key_callback(GLFWwindow *glfwWindow, int key, int scancode, int action, int mods);
 
     GLFWwindow *glfwWindow = nullptr;
     Grid *grid = nullptr;

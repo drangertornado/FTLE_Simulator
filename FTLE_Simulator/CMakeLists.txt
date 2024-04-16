@@ -47,7 +47,7 @@ add_executable(main
     structures/AABB.h
     structures/Camera.h
     structures/Light.h
-    structures/Material.h
+    structures/PhongLighting.h
     structures/Ray.h
     structures/Point.h
     structures/TransferFunction.h

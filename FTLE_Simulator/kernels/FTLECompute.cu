@@ -187,9 +187,9 @@ __device__ glm::vec3 rk4Integration(const glm::vec3 &startPosition, const float 
         k3 = stepSize * odeAbcFlow(position + directionFactor * k2 / 2.0f, time + directionFactor * stepSize / 2.0f);
         k4 = stepSize * odeAbcFlow(position + directionFactor * k3, time + directionFactor * stepSize);
 
-        position += integrateForward ? (k1 + 2.0f * k2 + 2.0f * k3 + k4) / 6.0f : -(k1 + 2.0f * k2 + 2.0f * k3 + k4) / 6.0f;
+        position += directionFactor * (k1 + 2.0f * k2 + 2.0f * k3 + k4) / 6.0f;
 
-        float timeIncrement = integrateForward ? stepSize : -stepSize;
+        float timeIncrement = directionFactor * stepSize;
         if ((integrateForward && (time + timeIncrement) > endTime) ||
             (!integrateForward && (time - timeIncrement) < endTime))
         {
@@ -286,6 +286,10 @@ namespace FTLEComputeKernel
 
         // Compute FTLE exponent
         computeFtleExponent<<<numBlocks, setttings->cudaBlockSize, 0, stream>>>(grid->getPoints_d_ptr(), grid->getPointsCount(), grid->getSingularValues_d_ptr(), integrationDuration);
+        cudaStreamSynchronize(stream);
+
+        // Compute Normals
+        computeNormalVector<<<numBlocks, setttings->cudaBlockSize, 0, stream>>>(grid->getPoints_d_ptr(), grid->getPointsCount());
         cudaStreamSynchronize(stream);
     }
 }

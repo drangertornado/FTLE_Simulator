@@ -45,6 +45,7 @@ int main()
 
     // Initialize Renderer
     Renderer renderer(&grid, &settings);
+    // renderer.render();
 
     // Create a window
     Window window(&grid, &renderer, &settings);

@@ -56,6 +56,7 @@ void Window::create(const char *title)
     glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(glfwWindow, mouse_callback);
     glfwSetScrollCallback(glfwWindow, scroll_callback);
+    glfwSetKeyCallback(glfwWindow, key_callback);
 
     // Check if glad library is initialized
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -231,6 +232,14 @@ void Window::mouse_callback(GLFWwindow *glfwWindow, double inputPositionX, doubl
 
 void Window::scroll_callback(GLFWwindow *glfwWindow, double offsetX, double offsetY)
 {
+}
+
+void Window::key_callback(GLFWwindow *glfwWindow, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_TAB && action == GLFW_PRESS)
+    {
+        windowInstance->settings->flowDirectionPreference = (windowInstance->settings->flowDirectionPreference + 1) % 3;
+    }
 }
 
 #endif // WINDOW_CPP

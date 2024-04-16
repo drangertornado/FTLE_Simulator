@@ -6,6 +6,8 @@
 #include "CUDABuffer.h"
 #include "Camera.h"
 #include "Ray.h"
+#include "Light.h"
+#include "PhongLighting.h"
 #include "Point.h"
 #include "AABB.h"
 #include "Grid.h"
@@ -24,8 +26,11 @@ __global__ void volumeRender(unsigned char *pixels,
 							 float gridSpacing,
 							 AABB gridAABB,
 							 float rayStepSize,
+							 unsigned int flowDirectionPreference,
 							 TransferFunction tfForward,
-							 TransferFunction tfBackward);
+							 TransferFunction tfBackward,
+							 PointLight light,
+							 PhongLighting lighting);
 
 __global__ void volumeRenderAA(unsigned char *pixels,
 							   unsigned int pixelsCount,
@@ -38,18 +43,24 @@ __global__ void volumeRenderAA(unsigned char *pixels,
 							   unsigned int raysCount,
 							   float rayStepSize,
 							   float antiAliasingIntensity,
+							   unsigned int flowDirectionPreference,
 							   TransferFunction tfForward,
 							   TransferFunction tfBackward,
+							   PointLight light,
+							   PhongLighting lighting,
 							   curandState *curandStates);
 
-__device__ glm::vec4 rayMarch(Ray &ray,
-							  float &rayStepSize,
-							  Point *points,
-							  unsigned int &gridResolution,
-							  float &gridSpacing,
+__device__ glm::vec4 rayMarch(const Ray &ray,
+							  const float &rayStepSize,
+							  const Point *points,
+							  const unsigned int &gridResolution,
+							  const float &gridSpacing,
 							  AABB &gridAABB,
+							  const unsigned int &flowDirectionPreference,
 							  TransferFunction &tfForward,
-							  TransferFunction &tfBackward);
+							  TransferFunction &tfBackward,
+							  PointLight &light,
+							  PhongLighting &lighting);
 
 __device__ glm::vec2 normalizePixels(const unsigned int &pixelIndex, const glm::vec2 &viewportSize);
 

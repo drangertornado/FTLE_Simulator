@@ -5,7 +5,7 @@
 
 #include "glm.hpp"
 #include "Light.h"
-#include "Material.h"
+#include "PhongLighting.h"
 #include "TransferFunction.h"
 
 class Settings
@@ -27,19 +27,22 @@ public:
     float mouseSensitivity = 0.01f;
     bool invertMouseVertically = true;
 
+    /* Flow direction preference */
+    // 0 - Both forward and backward flows; 1 - Forward flow; 2 - Backward flow
+    unsigned int flowDirectionPreference = 0;
+
     /* Lighting */
-    DirectionalLight directionalLight{
-        glm::vec3(0.0f, 0.0f, 0.0f),  // Light color
-        glm::vec3(0.2f, 0.2f, -1.0f), // Light direction
-        100.0f                        // Light intensity
+    PointLight light{
+        glm::vec3(1.0f, 1.0f, 1.0f), // Light color
+        glm::vec3(0.0f, 0.0f, 0.0f)  // Light Position
     };
 
-    /* Material */
-    Material material{
-        0.2f, // Ambient factor
-        1.0f, // Diffuse factor
-        0.5f, // Specular factor
-        20.0f // Specular exponent
+    /* Phong Lighting */
+    PhongLighting lighting{
+        0.2f,  // Ambient intensity
+        1.0f,  // Diffuse intensity
+        0.5f,  // Specular intensity
+        100.0f // Specular exponent
     };
 
     /* Transfer functions */
@@ -83,7 +86,7 @@ public:
     /* Ray tracing */
     unsigned int raysCount = 2;
     float rayStepSize = 0.05f;
-    bool antiAliasingEnabled = true;
+    bool antiAliasingEnabled = false;
     float antiAliasingIntensity = 0.001f;
 
     /* CUDA */

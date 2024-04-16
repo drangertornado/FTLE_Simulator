@@ -5,6 +5,12 @@
 
 #include "glm.hpp"
 
+struct PointLight
+{
+    glm::vec3 color;
+    glm::vec3 position;
+};
+
 struct DirectionalLight
 {
     glm::vec3 color;
