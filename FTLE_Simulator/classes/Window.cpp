@@ -240,6 +240,16 @@ void Window::key_callback(GLFWwindow *glfwWindow, int key, int scancode, int act
     {
         windowInstance->settings->flowDirectionPreference = (windowInstance->settings->flowDirectionPreference + 1) % 3;
     }
+
+    if (key == GLFW_KEY_1 && action == GLFW_PRESS)
+    {
+        windowInstance->settings->antiAliasingEnabled = !windowInstance->settings->antiAliasingEnabled;
+    }
+
+    if (key == GLFW_KEY_2 && action == GLFW_PRESS)
+    {
+        windowInstance->settings->lightingEnabled = !windowInstance->settings->lightingEnabled;
+    }
 }
 
 #endif // WINDOW_CPP

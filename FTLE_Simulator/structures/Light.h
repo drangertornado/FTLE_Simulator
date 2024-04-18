@@ -15,7 +15,6 @@ struct DirectionalLight
 {
     glm::vec3 color;
     glm::vec3 direction;
-    float intensity;
 };
 
 struct SpotLight
@@ -23,7 +22,6 @@ struct SpotLight
     glm::vec3 color;
     glm::vec3 position;
     glm::vec3 direction;
-    float intensity;
     float cutOff;
     float outerCutoff;
 };

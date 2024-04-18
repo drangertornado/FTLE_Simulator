@@ -31,6 +31,9 @@ public:
     // 0 - Both forward and backward flows; 1 - Forward flow; 2 - Backward flow
     unsigned int flowDirectionPreference = 0;
 
+    /* Enable lighting */
+    bool lightingEnabled = true;
+
     /* Lighting */
     PointLight light{
         glm::vec3(1.0f, 1.0f, 1.0f), // Light color
@@ -39,9 +42,9 @@ public:
 
     /* Phong Lighting */
     PhongLighting lighting{
-        0.2f,  // Ambient intensity
+        0.1f,  // Ambient intensity
         1.0f,  // Diffuse intensity
-        0.5f,  // Specular intensity
+        0.3f,  // Specular intensity
         100.0f // Specular exponent
     };
 
@@ -67,7 +70,7 @@ public:
     // Integration start time
     float integrationStartTime = 0.0f;
     // Integration duration
-    float integrationDuration = 0.01f;
+    float integrationDuration = 0.1f;
     // Step size for RK4
     float integrationStepSize = 0.001f;
     // Step for adjusting the start time on key press
@@ -85,7 +88,7 @@ public:
 
     /* Ray tracing */
     unsigned int raysCount = 2;
-    float rayStepSize = 0.05f;
+    float rayStepSize = 0.04f;
     bool antiAliasingEnabled = false;
     float antiAliasingIntensity = 0.001f;
 

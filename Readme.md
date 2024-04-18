@@ -17,40 +17,42 @@ Scientific Visualization Project by Sai Prashanth Balachandran guided by Prof. G
 - [Tutorials](#tutorials)
 
 ## Introduction
-In this project, we compute the FTLE values for ABC flows and render them on the screen in real-time. Initially, the FTLE values are computed on a regular grid (aka uniform grid) using the parametric equations of ABC flows. And later, we render them on the screen using volume rendering techniques.
+In this project, we compute the FTLE (Finite-Time Lyapunov Exponent) values for ABC (Arnold-Beltrami-Childress) flows and render them on the screen in real-time using CUDA (Compute Unified Device Architecture). Initially, the FTLE values are computed on a regular grid (aka uniform grid) using the parametric equations of ABC flows. And later, we render them on the screen using volume rendering techniques.
 
 ## Prerequisites
 The prerequisites for setting up the project are as follows.
 1. [Latest Nvidia GPU driver](https://www.nvidia.com/download/index.aspx)
-2. [Nvidia Cuda Toolkit](https://developer.nvidia.com/cuda-toolkit) v12.3
+2. [Nvidia Cuda Toolkit v12.3](https://developer.nvidia.com/cuda-toolkit)
 3. [Visual Studio 2022](https://visualstudio.microsoft.com/downloads/) (with "Desktop development with C++" checked for MSVC, Clang and CMake)
 4. [Visual Studio Code](https://code.visualstudio.com/download) (with C/C++ and CMake extensions) 
-5. [CMake](https://cmake.org/download/) v3.11 or higher
+5. [CMake](https://cmake.org/download/) (v3.11 or higher)
 6. [Git](https://git-scm.com/downloads)
 7. [SourceTree](https://www.sourcetreeapp.com/) (Optional)
 Download and install the above softwares.
 
 ## Dependencies
-This project relies on the following open-source libraries, all of which are located within the "FTLE_Simulator/external" directory and have been appropriately configured in CMake.
+This project relies on the following open-source libraries, all of which are located within the "FTLE_Simulator/external" directory and have been appropriately configured in CMake to compile them.
 1. [GLM](https://github.com/g-truc/glm)
 2. [GLFW](https://www.glfw.org/)
 3. [GLAD](https://glad.dav1d.de/)
 
 ## Getting started
 Setting up the project involves the following steps.
-1. After installing the above software, clone this repository to the preferred directory of your choice using Git or SourceTree.
-2. Open the "FTLE_Simulator" directory on VS Code. After opening, it should automatically configure the project.
+1. After installing the prerequisites, clone this repository to the preferred directory of your choice using Git or SourceTree.
+2. Open the "FTLE_Simulator" directory on Visual Studio Code. After opening, it should automatically configure the project.
 3. Click on the Build button and choose MSVC as the default compiler for C++.
 4. Once built, run main.exe inside the "FTLE_Simulator/build/debug" or "FTLE_Simulator/build/release" directory.
 
 ## Controls
 After running the application, you will see a GLFW window on the screen.
-1. Use the <span style="color:#8ab4f8;">W, A, S, and D</span> keys for navigation.
-2. <span style="color:#8ab4f8;">Q and E</span> will move the camera up and down.
-3. The <span style="color:#8ab4f8;">TAB</span> key will toggle between Forward flow, Backward flow, and Forward and Backward blended view.
-4. Use the arrow keys <span style="color:#8ab4f8;">LEFT and RIGHT</span> to decrease and increase the integration duration.
-5. And finally, the arrow keys <span style="color:#8ab4f8;">UP and DOWN</span> will change the integration start time.
-6. To exit, press the <span style="color:#8ab4f8;">ESC</span> key.
+1. Use the **W**, **A**, **S**, and **D** keys for navigation.
+2. **Q** and **E** will move the camera up and down.
+3. The **TAB** key will toggle between forward flow, backward flow, and Blended view consisting of both forward and backward flow.
+4. Use the arrow keys **LEFT** and **RIGHT** to decrease and increase the integration duration.
+5. Use the arrow keys **UP** and **DOWN** will change the integration start time.
+6. Press **1** to toggle anti-aliasing on or off.
+7. Press **2** to toggle lighting on or off.
+8. To exit, press the **ESC** key.
 
 ## The Grid
 The FTLE field is computed on a square regular grid as shown in the image below.
@@ -93,7 +95,7 @@ Volume rendering is executed through the following steps:
 
 We can also cast more rays and average the result by enabling anti-aliasing in Settings.cpp file but this could reduce the performance significantly.
 
-Note: We have not added attenuation of radiance while computing Phong lighting to maintain uniform lighting for visualization purposes. Also, we are considering both sides of the normal vector since its a volume.
+Note: We have not added attenuation of radiance while computing Phong lighting to maintain uniform lighting for visualization purposes. Also, we are considering both sides of the normal vector to compute lighting since its a volume.
 
 ## Final Results
 Below are sample images rendered using a GTX 1050Ti Max-Q:
@@ -106,12 +108,12 @@ Backward flow:
 
 <img src="Readme/images/backward.png" alt="Backward flow" width="300"/>
 
-Forward and Backward flow:
+Blended flow (Forward and Backward):
 
-<img src="Readme/images/forward_backward.png" alt="Forward and Backward flow" width="300"/>
+<img src="Readme/images/forward_backward.png" alt="Blended flow (Forward and Backward)" width="300"/>
 
 ## Conclusion
-
+In conclusion, we have successfully achieved the real-time computation and visualization of FTLE (Finite-Time Lyapunov Exponent) fields for ABC (Arnold-Beltrami-Childress) flows by harnessing the computational power of modern GPU through CUDA from scratch.
 
 ## References
 [1]. [MCFTLE: Monte Carlo Rendering of Finite-Time Lyapunov Exponent Fields](https://onlinelibrary.wiley.com/doi/full/10.1111/cgf.12914)

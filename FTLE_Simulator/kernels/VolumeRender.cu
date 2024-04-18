@@ -17,7 +17,7 @@ __global__ void setupCurandStates(curandState *curandStates, unsigned int curand
 }
 
 // Function to render the volume
-__global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Camera camera, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, float rayStepSize, unsigned int flowDirectionPreference, TransferFunction tfForward, TransferFunction tfBackward, PointLight light, PhongLighting lighting)
+__global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Camera camera, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, float rayStepSize, unsigned int flowDirectionPreference, TransferFunction tfForward, TransferFunction tfBackward, bool lightingEnabled, PointLight light, PhongLighting lighting)
 {
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -30,7 +30,7 @@ __global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, un
         Ray ray(normalizedDeviceCoords, camera);
 
         // Integrate colors by ray marching
-        glm::vec4 pixelColor = rayMarch(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, flowDirectionPreference, tfForward, tfBackward, light, lighting);
+        glm::vec4 pixelColor = rayMarch(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, flowDirectionPreference, tfForward, tfBackward, lightingEnabled, light, lighting);
 
         // Save pixel color
         pixels[idx * channelsPerPixel] = static_cast<unsigned char>(glm::clamp(pixelColor.r * 255.0f, 0.0f, 255.0f));
@@ -40,7 +40,7 @@ __global__ void volumeRender(unsigned char *pixels, unsigned int pixelsCount, un
 }
 
 // Function to render the volume with anti-aliasing
-__global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Camera camera, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, unsigned int raysCount, float rayStepSize, float antiAliasingIntensity, unsigned int flowDirectionPreference, TransferFunction tfForward, TransferFunction tfBackward, PointLight light, PhongLighting lighting, curandState *curandStates)
+__global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, unsigned int channelsPerPixel, Camera camera, Point *points, unsigned int gridResolution, float gridSpacing, AABB gridAABB, unsigned int raysCount, float rayStepSize, unsigned int flowDirectionPreference, TransferFunction tfForward, TransferFunction tfBackward, bool lightingEnabled, PointLight light, PhongLighting lighting, curandState *curandStates, float antiAliasingIntensity)
 {
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -53,7 +53,7 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
         Ray ray(normalizedDeviceCoords, camera, antiAliasingIntensity, curandStates[idx]);
 
         // Integrate colors by ray marching
-        glm::vec4 pixelColor = rayMarch(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, flowDirectionPreference, tfForward, tfBackward, light, lighting);
+        glm::vec4 pixelColor = rayMarchAA(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, flowDirectionPreference, tfForward, tfBackward, lightingEnabled, light, lighting, curandStates[idx], antiAliasingIntensity);
 
         // Generate rays
         for (unsigned int rayIdx = 0; rayIdx < raysCount - 1; rayIdx++)
@@ -62,7 +62,7 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
             Ray ray(normalizedDeviceCoords, camera, antiAliasingIntensity, curandStates[idx]);
 
             // Integrate colors by ray marching
-            glm::vec4 pixelColorPerRay = rayMarch(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, flowDirectionPreference, tfForward, tfBackward, light, lighting);
+            glm::vec4 pixelColorPerRay = rayMarchAA(ray, rayStepSize, points, gridResolution, gridSpacing, gridAABB, flowDirectionPreference, tfForward, tfBackward, lightingEnabled, light, lighting, curandStates[idx], antiAliasingIntensity);
 
             // Mix colors
             pixelColor = (pixelColor + pixelColorPerRay) * 0.5f;
@@ -75,7 +75,7 @@ __global__ void volumeRenderAA(unsigned char *pixels, unsigned int pixelsCount, 
     }
 }
 
-__device__ glm::vec4 rayMarch(const Ray &ray, const float &rayStepSize, const Point *points, const unsigned int &gridResolution, const float &gridSpacing, AABB &gridAABB, const unsigned int &flowDirectionPreference, TransferFunction &tfForward, TransferFunction &tfBackward, PointLight &light, PhongLighting &lighting)
+__device__ glm::vec4 rayMarch(const Ray &ray, const float &rayStepSize, const Point *points, const unsigned int &gridResolution, const float &gridSpacing, AABB &gridAABB, const unsigned int &flowDirectionPreference, TransferFunction &tfForward, TransferFunction &tfBackward, bool &lightingEnabled, PointLight &light, PhongLighting &lighting)
 {
     // Default pixel color to black
     glm::vec4 pixelColor(0.0f);
@@ -107,8 +107,93 @@ __device__ glm::vec4 rayMarch(const Ray &ray, const float &rayStepSize, const Po
             glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalars.y);
 
             // Apply lighting to the colors
-            glm::vec3 colorForward = lighting.computeLighting(samplePoint, interpolatedColorForward, interpolatedNormalsForward, light, ray);
-            glm::vec3 colorBackward = lighting.computeLighting(samplePoint, interpolatedColorBackward, interpolatedNormalsBackward, light, ray);
+            glm::vec3 colorForward, colorBackward;
+            if (lightingEnabled)
+            {
+                colorForward = lighting.computeLighting(samplePoint, interpolatedColorForward, interpolatedNormalsForward, light, ray);
+                colorBackward = lighting.computeLighting(samplePoint, interpolatedColorBackward, interpolatedNormalsBackward, light, ray);
+            }
+            else
+            {
+                colorForward = interpolatedColorForward;
+                colorBackward = interpolatedColorBackward;
+            }
+
+            // Blend colors
+            glm::vec4 interpolatedColorBlended;
+            if (flowDirectionPreference == 0)
+            {
+                // Blend forward and backward color via additive blending
+                interpolatedColorBlended = glm::vec4(colorForward + colorBackward, (interpolatedColorForward.a + interpolatedColorBackward.a) * 0.5f);
+            }
+            else if (flowDirectionPreference == 1)
+            {
+                // Set forward color
+                interpolatedColorBlended = glm::vec4(colorForward, interpolatedColorForward.a);
+            }
+            else if (flowDirectionPreference == 2)
+            {
+                // Set backward color
+                interpolatedColorBlended = glm::vec4(colorBackward, interpolatedColorBackward.a);
+            }
+
+            // Use over blending for forward composting
+            pixelColor = overBlend(pixelColor, interpolatedColorBlended);
+        }
+
+        // Blend with black color if alpha is not 1.0f
+        if (pixelColor.a < 0.9999f)
+        {
+            pixelColor = overBlend(pixelColor, glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        }
+    }
+
+    return pixelColor;
+}
+
+__device__ glm::vec4 rayMarchAA(const Ray &ray, const float &rayStepSize, const Point *points, const unsigned int &gridResolution, const float &gridSpacing, AABB &gridAABB, const unsigned int &flowDirectionPreference, TransferFunction &tfForward, TransferFunction &tfBackward, bool &lightingEnabled, PointLight &light, PhongLighting &lighting, curandState &curandState, const float &antiAliasingIntensity)
+{
+    // Default pixel color to black
+    glm::vec4 pixelColor(0.0f);
+
+    // Compute ray intersections on the volume's axis aligned bounding box (AABB)
+    float tmin, tmax;
+    if (gridAABB.intersectRay(ray, tmin, tmax))
+    {
+        // Ray march through the bounding volume based on step size
+        for (float t = tmin; t <= tmax; t += rayStepSize + (0.5f - static_cast<float>(curand_uniform(&curandState))) * antiAliasingIntensity)
+        {
+            glm::vec3 samplePoint = ray.origin + t * ray.direction;
+
+            // Early ray termination if opacity is 1.0f
+            if (pixelColor.a >= 0.9999f)
+            {
+                break;
+            }
+
+            // Interpolate scalar values (x - forward, y - backward)
+            glm::vec2 interpolatedScalars;
+            // Interpolated normals
+            glm::vec3 interpolatedNormalsForward, interpolatedNormalsBackward;
+            // Perform trilinear interpolation on the sample point
+            interpolateParameters(samplePoint, points, gridResolution, gridSpacing, interpolatedScalars, interpolatedNormalsForward, interpolatedNormalsBackward);
+
+            // Use transfer function to set color
+            glm::vec4 interpolatedColorForward = tfForward.getColor(interpolatedScalars.x);
+            glm::vec4 interpolatedColorBackward = tfBackward.getColor(interpolatedScalars.y);
+
+            // Apply lighting to the colors
+            glm::vec3 colorForward, colorBackward;
+            if (lightingEnabled)
+            {
+                colorForward = lighting.computeLighting(samplePoint, interpolatedColorForward, interpolatedNormalsForward, light, ray);
+                colorBackward = lighting.computeLighting(samplePoint, interpolatedColorBackward, interpolatedNormalsBackward, light, ray);
+            }
+            else
+            {
+                colorForward = interpolatedColorForward;
+                colorBackward = interpolatedColorBackward;
+            }
 
             // Blend colors
             glm::vec4 interpolatedColorBlended;
@@ -359,13 +444,14 @@ namespace VolumeRenderKernel
                 *grid->getAABB(),
                 settings->raysCount,
                 settings->rayStepSize,
-                settings->antiAliasingIntensity,
                 settings->flowDirectionPreference,
                 settings->tfForward,
                 settings->tfBackward,
+                settings->lightingEnabled,
                 settings->light,
                 settings->lighting,
-                renderer->getCurandStates_d_ptr());
+                renderer->getCurandStates_d_ptr(),
+                settings->antiAliasingIntensity);
         }
         else
         {
@@ -382,6 +468,7 @@ namespace VolumeRenderKernel
                 settings->flowDirectionPreference,
                 settings->tfForward,
                 settings->tfBackward,
+                settings->lightingEnabled,
                 settings->light,
                 settings->lighting);
         }

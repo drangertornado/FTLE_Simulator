@@ -29,6 +29,7 @@ __global__ void volumeRender(unsigned char *pixels,
 							 unsigned int flowDirectionPreference,
 							 TransferFunction tfForward,
 							 TransferFunction tfBackward,
+							 bool lightingEnabled,
 							 PointLight light,
 							 PhongLighting lighting);
 
@@ -42,13 +43,14 @@ __global__ void volumeRenderAA(unsigned char *pixels,
 							   AABB gridAABB,
 							   unsigned int raysCount,
 							   float rayStepSize,
-							   float antiAliasingIntensity,
 							   unsigned int flowDirectionPreference,
 							   TransferFunction tfForward,
 							   TransferFunction tfBackward,
+							   bool lightingEnabled,
 							   PointLight light,
 							   PhongLighting lighting,
-							   curandState *curandStates);
+							   curandState *curandStates,
+							   float antiAliasingIntensity);
 
 __device__ glm::vec4 rayMarch(const Ray &ray,
 							  const float &rayStepSize,
@@ -59,8 +61,24 @@ __device__ glm::vec4 rayMarch(const Ray &ray,
 							  const unsigned int &flowDirectionPreference,
 							  TransferFunction &tfForward,
 							  TransferFunction &tfBackward,
+							  bool &lightingEnabled,
 							  PointLight &light,
 							  PhongLighting &lighting);
+
+__device__ glm::vec4 rayMarchAA(const Ray &ray,
+								const float &rayStepSize,
+								const Point *points,
+								const unsigned int &gridResolution,
+								const float &gridSpacing,
+								AABB &gridAABB,
+								const unsigned int &flowDirectionPreference,
+								TransferFunction &tfForward,
+								TransferFunction &tfBackward,
+								bool &lightingEnabled,
+								PointLight &light,
+								PhongLighting &lighting,
+								curandState &curandState,
+								const float &antiAliasingIntensity);
 
 __device__ glm::vec2 normalizePixels(const unsigned int &pixelIndex, const glm::vec2 &viewportSize);
 
