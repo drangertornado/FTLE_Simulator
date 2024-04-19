@@ -47,9 +47,9 @@ Setting up the project involves the following steps.
 After running the application, you will see a GLFW window on the screen.
 1. Use the **W**, **A**, **S**, and **D** keys for navigation.
 2. **Q** and **E** will move the camera up and down.
-3. The **TAB** key will toggle between forward flow, backward flow, and Blended view consisting of both forward and backward flow.
+3. The **TAB** key will toggle between forward flow, backward flow, and blended view consisting of both forward and backward flow.
 4. Use the arrow keys **LEFT** and **RIGHT** to decrease and increase the integration duration.
-5. Use the arrow keys **UP** and **DOWN** will change the integration start time.
+5. Use the arrow keys **UP** and **DOWN** to change the integration start time.
 6. Press **1** to toggle anti-aliasing on or off.
 7. Press **2** to toggle lighting on or off.
 8. To exit, press the **ESC** key.
@@ -72,7 +72,7 @@ Additionally, we calculate the axis-aligned bounding box of the grid, consisting
 ## Computing the FTLE values
 To compute the FTLE values, we follow these steps:
 1. For a given starting time and integration duration, integrate the current position of all the points both forward and backwards in time using the RK4 integration scheme using the ordinary difference equation (ODE) for ABC flows, as detailed in [1].
-2. Once the points have been integrated both forward and backward in time, we compute the flow map Jacobian matrix based on the initial and current positions of the points using finite differences. At this stage, the points in the purple region are no longer utilized.
+2. Once the points have been integrated both forward and backward in time, we compute the flow map Jacobian matrix based on the initial and current positions of the points using finite differences. At this stage, the points in the purple region are not useful anymore.
 3. From the Jacobian matrix, we can compute the Flow map tensor (aka Cauchy-Green deformation tensor) by multiplying the flow map Jacobin matrix with its transpose.
 4. We then use CuSolver to compute the singular values associated with the Flow map tensor matrix which represents the magnitude of divergence.
 5. Finally, the FTLE field values are computed by normalizing and scaling the singular values logarithmically.
