@@ -1,6 +1,12 @@
 <!-- omit in toc -->
 # Realtime simulation and visualization of FTLE fields on ABC flows
-Scientific Visualization Project by Sai Prashanth Balachandran guided by Prof. Garth
+Scientific Visualization Project  
+By Sai Prashanth Balachandran  
+Guided by Prof. Garth  
+RPTU Kaiserslautern-Landau, 2024  
+
+[Watch Demo on YouTube](https://youtu.be/u6rEI1MnkT8?si=oMMaSSqwuzHZtdVq)
+
 <!-- omit in toc -->
 ## Table of Contents
 - [Introduction](#introduction)
@@ -116,9 +122,21 @@ Blended flow (Forward and Backward):
 In conclusion, we have successfully achieved the real-time computation and visualization of FTLE (Finite-Time Lyapunov Exponent) fields for ABC (Arnold-Beltrami-Childress) flows by harnessing the computational power of modern GPU through CUDA from scratch.
 
 ## References
-[1]. [MCFTLE: Monte Carlo Rendering of Finite-Time Lyapunov Exponent Fields](https://onlinelibrary.wiley.com/doi/full/10.1111/cgf.12914)
+[1] MCFTLE: Monte Carlo Rendering of Finite-Time Lyapunov Exponent Fields  
+https://onlinelibrary.wiley.com/doi/full/10.1111/cgf.12914
 
-[2]. Computer Graphics and Scientific Visualization course materials by Prof. Garth
+[2] Computer Graphics and Scientific Visualization course materials  
+Prof. Garth, RPTU Kaiserslautern-Landau
+
+## Acknowledgments
+This project makes use of third-party code, libraries, and algorithmic ideas, including:
+
+- LearnOpenGL by Joey de Vries (CC BY-NC 4.0)
+- Ray–AABB intersection method described by Tavian Barnes
+- GLFW, GLAD, and GLM (see their respective licenses)
+- NVIDIA CUDA Toolkit, including cuSOLVER (see their respective licenses)
+
+Licensing details and usage notes are provided in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Tutorials
 1. [Introduction to CUDA](https://developer.nvidia.com/blog/easy-introduction-cuda-c-and-c)
