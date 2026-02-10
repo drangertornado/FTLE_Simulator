@@ -7,6 +7,8 @@
 #include <assert.h>
 #include <vector>
 
+// Adapted from: https://github.com/ingowald/optix7course
+
 struct CUDABuffer
 {
     // Device pointer

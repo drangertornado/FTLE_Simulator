@@ -19,6 +19,11 @@ It incorporates the following third-party components, which are subject to their
 - Notes:
   - Implementation adapted for this project
 
+### CUDABuffer helper
+- Author: Ingo Wald 
+- Source: https://github.com/ingowald/optix7course/
+- License: Apache-2.0
+
 ### Other Dependencies
 - GLFW — see its license  
 - GLAD — see its license  

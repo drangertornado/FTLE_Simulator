@@ -80,7 +80,7 @@ To compute the FTLE values, we follow these steps:
 1. For a given starting time and integration duration, integrate the current position of all the points both forward and backwards in time using the RK4 integration scheme using the ordinary difference equation (ODE) for ABC flows, as detailed in [1].
 2. Once the points have been integrated both forward and backward in time, we compute the flow map Jacobian matrix based on the initial and current positions of the points using finite differences. At this stage, the points in the purple region are not useful anymore.
 3. From the Jacobian matrix, we can compute the Flow map tensor (aka Cauchy-Green deformation tensor) by multiplying the flow map Jacobin matrix with its transpose.
-4. We then use CuSolver to compute the singular values associated with the Flow map tensor matrix which represents the magnitude of divergence.
+4. We then use cuSOLVER to compute the singular values associated with the Flow map tensor matrix which represents the magnitude of divergence.
 5. Finally, the FTLE field values are computed by normalizing and scaling the singular values logarithmically.
 
 Similarly, to calculate the normal vectors at each point, we utilize finite difference approximation, employing the FTLE values of neighboring points. After this step, the boundary points in the blue region are not useful anymore.
@@ -134,6 +134,7 @@ This project makes use of third-party code, libraries, and algorithmic ideas, in
 - LearnOpenGL by Joey de Vries (CC BY-NC 4.0)
 - Ray–AABB intersection method described by Tavian Barnes
 - GLFW, GLAD, and GLM (see their respective licenses)
+- CUDABuffer helper by Ingo Wald (Apache-2.0)
 - NVIDIA CUDA Toolkit, including cuSOLVER (see their respective licenses)
 
 Licensing details and usage notes are provided in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
@@ -142,6 +143,6 @@ Licensing details and usage notes are provided in [THIRD_PARTY_NOTICES.md](THIRD
 1. [Introduction to CUDA](https://developer.nvidia.com/blog/easy-introduction-cuda-c-and-c)
 2. [Optix 7 Course](https://github.com/ingowald/optix7course)
 3. [OpenGL Course](https://learnopengl.com)
-4. [CuSolver documentation](https://docs.nvidia.com/cuda/cusolver)
-5. [CuSolver examples](https://github.com/NVIDIA/CUDALibrarySamples/blob/master/cuSOLVER)
+4. [cuSOLVER documentation](https://docs.nvidia.com/cuda/cusolver)
+5. [cuSOLVER examples](https://github.com/NVIDIA/CUDALibrarySamples/blob/master/cuSOLVER)
 6. [CMake Tutorial](https://cmake.org/cmake/help/latest/guide/tutorial/index.html)

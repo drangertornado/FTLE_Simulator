@@ -19,7 +19,7 @@ struct AABB
       : min(0.0f),
         max(0.0f) {}
 
-  // Adapted from: https://tavianator.com/2011/ray_html
+  // Adapted from: https://tavianator.com
   __device__ bool intersectRay(const Ray &ray, float &tmin, float &tmax)
   {
     glm::vec3 invDirection = 1.0f / ray.direction;
